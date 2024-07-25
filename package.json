@@ -1,0 +1,20 @@
+{
+  "license": "MIT",
+  "version": "1.0.0",
+  "name": "cooking-class",
+  "scripts": {
+    "synpress:run": "synpress run --env='MAX_SLIPPAGE_TOLERANCE=0.5,PAIR=USDT/USDC,WRAP_UNWRAP_CYCLES=10,USD=35,NETWORK_NAME=Linea' --config='videoCompression=false'",
+    "start:server": "serve ./node_modules/@metamask/test-dapp/dist -p 3000",
+    "test": "start-server-and-test 'pnpm start:server' http-get://localhost:3000 'pnpm synpress:run'",
+    "test:headless": "start-server-and-test 'pnpm start:server' http-get://localhost:3000 'pnpm synpress:run --headless'"
+  },
+  "dependencies": {
+    "cypress-if": "1.12.3"
+  },
+  "devDependencies": {
+    "serve": "14.2.0",
+    "@metamask/test-dapp": "7.0.1",
+    "@synthetixio/synpress": "3.7.3",
+    "start-server-and-test": "2.0.0"
+  }
+}

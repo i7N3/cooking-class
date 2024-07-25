@@ -1,0 +1,13 @@
+.env
+.DS_Store
+**/.env
+node_modules
+downloads
+lint-results.sarif
+.npm-cache
+.yarn-cache
+.yarnrc
+yarn-error.log
+tests/e2e/videos
+tests/e2e/videos-ci
+tests/e2e/screenshots
