@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "name": "cooking-class",
   "scripts": {
-    "synpress:run": "synpress run --env='MAX_SLIPPAGE_TOLERANCE=0.5,PAIR=USDT/USDC,WRAP_UNWRAP_CYCLES=10,USD=35,NETWORK_NAME=Linea' --config='videoCompression=false'",
+    "synpress:run": "synpress run --env='MAX_SLIPPAGE_TOLERANCE=0.5,PAIR=USDT/USDC,WRAP_UNWRAP_CYCLES=10,USD=90,NETWORK_NAME=Linea' --config='videoCompression=false,taskTimeout=45000,defaultCommandTimeout=45000,pageLoadTimeout=45000,requestTimeout=45000,viewportWidth=1280,viewportHeight=720'",
     "start:server": "serve ./node_modules/@metamask/test-dapp/dist -p 3000",
     "test": "start-server-and-test 'pnpm start:server' http-get://localhost:3000 'pnpm synpress:run'",
     "test:headless": "start-server-and-test 'pnpm start:server' http-get://localhost:3000 'pnpm synpress:run --headless'"

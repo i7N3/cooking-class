@@ -1,12 +1,53 @@
 import 'cypress-if';
 
 const networks = {
-  Linea: '59144',
-  Scroll: '534352',
-  zkSync: '324',
+  Linea: '59144', // $1000+ weekly
+  Scroll: '534352', // $1000+ weekly
+  zkSync: '324', // $5000+ weekly
   // TODO: ..
   // Mantle: '5000',
   // Mode: '34443',
+};
+
+const defaultNetwork = 'Linea';
+
+const elements = {
+  common: {
+    p: 'p',
+    body: 'body',
+    input: 'input',
+  },
+  removeLiquidityPopup: {
+    doNotShowAgain: ['p', 'do not show again'],
+    closeIcon: ['div:nth-child(4)>div:nth-child(1)>img:nth-child(2)'],
+  },
+  connectWallet: {
+    connect: ['button', 'Connect Wallet'],
+    metamastk: ['Metamask', { selector: 'p', trim: true }],
+  },
+  swap: {
+    input: ['have.class', 'chakra-input'],
+    approveButton: ['button', `Approve [TOKEN]`],
+    continueButton: ['button', 'Continue'],
+    priceImpact: ['p', 'Price Impact'],
+    swapButton: ['div:nth-child(5)>div:nth-child(2)>button:nth-child(1)'],
+    swapButtonPopup: [
+      'div:nth-child(3)>div:nth-child(2)>div:nth-child(1)>button:nth-child(2)',
+    ],
+    swapButtonPopupFallback: [
+      'div:nth-child(3)>div:nth-child(2)>div:nth-child(1)>button:nth-child(3)',
+    ],
+    success: ['img[src="/assets/loading/success.svg"]'],
+  },
+  selectPairToSwap: {
+    input: ['Enter name or paste address'],
+    to: [
+      'div:nth-child(3)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>img:nth-child(2)',
+    ],
+    from: [
+      'div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>img:nth-child(2)',
+    ],
+  },
 };
 
 // https://docs.etherscan.io/api-endpoints/accounts
@@ -53,19 +94,11 @@ describe('IZUMI swaps', () => {
 
       closeRemoveLiquidityPopup();
       selectPairToSwap({ from: fromSymbol, to: toSymbol });
-      swap({
-        to: toSymbol,
-        from: fromSymbol,
-        amount: USD * 0.996,
-      });
+      swap({ to: toSymbol, from: fromSymbol, amount: USD * 0.996 });
       cy.wait(getRandomInt(20000, 45000));
 
       selectPairToSwap({ from: toSymbol, to: fromSymbol });
-      swap({
-        to: fromSymbol,
-        from: toSymbol,
-        amount: USD * 0.994,
-      });
+      swap({ to: fromSymbol, from: toSymbol, amount: USD * 0.994 });
       cy.wait(getRandomInt(60000, 120000));
 
       cy.task('warn', `Cycle ${i + 1} of ${WRAP_UNWRAP_CYCLES} ended ..`);
@@ -74,16 +107,20 @@ describe('IZUMI swaps', () => {
   });
 
   function closeRemoveLiquidityPopup() {
-    cy.wait(getRandomInt(400, 800));
-    cy.contains('p', 'do not show again').if().click();
-    cy.wait(getRandomInt(400, 800));
-    cy.get('div:nth-child(4)>div:nth-child(1)>img:nth-child(2)').if().click();
+    cy.wait(getRandomInt(400, 800))
+      .contains(...elements.removeLiquidityPopup.doNotShowAgain)
+      .if()
+      .click()
+      .wait(getRandomInt(400, 800))
+      .get(...elements.removeLiquidityPopup.closeIcon)
+      .if()
+      .click();
   }
 
   function switchToNetwork(network) {
     cy.task('warn', `Switching network to ${network} ..`);
     cy.visit(`https://izumi.finance/trade/swap?chainId=${networks[network]}`);
-    if (network === 'Linea') {
+    if (network === defaultNetwork) {
       cy.changeMetamaskNetwork(network);
     } else {
       cy.allowMetamaskToAddAndSwitchNetwork(network);
@@ -91,44 +128,49 @@ describe('IZUMI swaps', () => {
   }
 
   function connectMetamask() {
-    cy.contains('button', 'Connect Wallet')
+    cy.contains(...elements.connectWallet.connect)
       .if()
       .click()
       .then(() => {
-        cy.findByText('Metamask', { selector: 'p', trim: true }).if().click();
+        cy.findByText(...elements.connectWallet.metamastk)
+          .if()
+          .click();
       });
   }
 
   function swap(args) {
     cy.task('warn', `Swapping ${args.from}/${args.to} for ~${args.amount} USD`);
 
-    cy.get('input')
-      .should('have.class', 'chakra-input')
+    cy.get(elements.common.input)
+      .should(...elements.swap.input)
       .first()
       .type(parseFloat(args.amount).toFixed(2))
       .blur()
       .wait(getRandomInt(400, 800))
-      .get('body')
+      .get(elements.common.body)
       .wait(getRandomInt(400, 800))
       .click();
 
-    cy.contains('button', `Approve ${args.from}`)
+    cy.contains(...elements.swap.approveButton.map(e => e.replace('[TOKEN]', args.from)))
       .if()
       .click()
       .then(() => {
-        cy.wait(getRandomInt(15000, 30000));
-        cy.switchToMetamaskNotification();
-        cy.confirmMetamaskPermissionToSpend({
-          spendLimit: `${args.amount}`,
-        }).then(spent => {
-          expect(spent).to.be.true;
-        });
-        cy.wait(getRandomInt(15000, 30000));
+        cy.wait(getRandomInt(15000, 30000))
+          .switchToMetamaskNotification()
+          .confirmMetamaskPermissionToSpend({
+            spendLimit: `${args.amount}`,
+          })
+          .then(spent => {
+            expect(spent).to.be.true;
+          })
+          .wait(getRandomInt(15000, 30000));
       });
 
-    cy.contains('button', 'Continue').if().click();
+    cy.contains(...elements.swap.continueButton)
+      .if()
+      .click();
 
-    cy.contains('p', 'Price Impact')
+    cy.contains(...elements.swap.priceImpact)
       .next()
       .then($el => {
         const priceImpact = parseFloat($el.get(0).innerText.replace('%', ''));
@@ -139,28 +181,27 @@ describe('IZUMI swaps', () => {
         expect(priceImpact).to.be.lte(MAX_SLIPPAGE_TOLERANCE);
       });
 
-    // Swap buttons
-    cy.get('div:nth-child(5)>div:nth-child(2)>button:nth-child(1)').click();
-
-    cy.get('div:nth-child(3)>div:nth-child(2)>div:nth-child(1)>button:nth-child(2)')
+    cy.get(...elements.swap.swapButton).click();
+    cy.get(...elements.swap.swapButtonPopup)
       .if()
       .click()
       .else()
       .then(() => {
-        cy.get('div:nth-child(3)>div:nth-child(2)>div:nth-child(1)>button:nth-child(3)')
+        cy.get(...elements.swap.swapButtonPopupFallback)
           .if()
           .click();
       });
 
-    cy.switchToMetamaskNotification();
-    cy.wait(getRandomInt(8000, 16000));
-
-    cy.confirmMetamaskTransaction({ gasConfig: 'aggressive' }).then(txData => {
+    cy.task(
+      'confirmMetamaskTransaction',
+      { gasConfig: 'aggressive' },
+      { timeout: 90000 },
+    ).then(txData => {
       expect(txData.confirmed).to.be.true;
     });
     cy.switchToCypressWindow();
 
-    cy.get('img[src="/assets/loading/success.svg"]', { timeout: 90000 }).should('exist');
+    cy.get(...elements.swap.success, { timeout: 90000 }).should('exist');
     cy.task('warn', `Succesfully swapped!`);
     cy.reload();
   }
@@ -168,30 +209,27 @@ describe('IZUMI swaps', () => {
   function selectPairToSwap(args) {
     cy.task('warn', `Selecting pair to swap ${args.from}/${args.to} ..`);
 
-    cy.get(
-      'div:nth-child(3)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>img:nth-child(2)',
-    ).click();
-    cy.findByPlaceholderText('Enter name or paste address')
+    cy.get(...elements.selectPairToSwap.to).click();
+    cy.findByPlaceholderText(elements.selectPairToSwap.input)
       .first()
       .type(args.to)
+      .wait(getRandomInt(200, 400))
       .blur()
-      .wait(getRandomInt(400, 800))
-      .get('body')
-      .wait(getRandomInt(400, 800));
-    cy.get('p').contains(args.to).first().click();
+      .wait(getRandomInt(300, 600))
+      .get(elements.common.body)
+      .wait(getRandomInt(300, 600));
+    cy.get(elements.common.p).contains(args.to).first().click();
 
-    cy.get(
-      'div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>div:nth-child(1)>img:nth-child(2)',
-    ).click();
-    cy.findByPlaceholderText('Enter name or paste address')
+    cy.get(...elements.selectPairToSwap.from).click();
+    cy.findByPlaceholderText(elements.selectPairToSwap.input)
       .first()
       .type(args.from)
-      .wait(getRandomInt(600, 800))
+      .wait(getRandomInt(200, 400))
       .blur()
-      .wait(getRandomInt(600, 800))
-      .get('body')
-      .wait(getRandomInt(400, 800));
-    cy.get('p').contains(args.from).first().click();
+      .wait(getRandomInt(300, 600))
+      .get(elements.common.body)
+      .wait(getRandomInt(300, 600));
+    cy.get(elements.common.p).contains(args.from).first().click();
   }
 
   function getRandomInt(min, max) {
